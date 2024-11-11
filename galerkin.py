@@ -9,7 +9,7 @@ x = sp.Symbol('x')
 
 
 def map_reference_domain(x, d, r):
-    return r[0] + (r[1]-r[0])*(x-d[0])/(d[1]-d[0])
+    return r[0] + (r[1]-r[0])*(x-d[0])/(d[1]-d[0]) 
 
 
 def map_true_domain(x, d, r):
@@ -51,12 +51,12 @@ class FunctionSpace:
     def weight(self, x=x):
         return 1
 
-    def basis_function(self, j, sympy=False):
+    def basis_function(self, j, sympy=False): 
         raise RuntimeError
 
-    def derivative_basis_function(self, j, k=1):
+    def derivative_basis_function(self, j, k=1): 
         raise RuntimeError
-
+    
     def evaluate_basis_function(self, Xj, j):
         return self.basis_function(j)(Xj)
 
@@ -82,8 +82,7 @@ class FunctionSpace:
         return Pd
 
     def inner_product(self, u):
-        us = map_expression_true_domain(
-            u, x, self.domain, self.reference_domain)
+        us = map_expression_true_domain(u, x, self.domain, self.reference_domain)
         us = sp.lambdify(x, us)
         uj = np.zeros(self.N+1)
         h = self.domain_factor
@@ -111,13 +110,13 @@ class Legendre(FunctionSpace):
     def derivative_basis_function(self, j, k=1):
         return self.basis_function(j).deriv(k)
 
-    def L2_norm_sq(self, N):
+    def L2_norm_sq(self, N): 
         Diag = np.zeros(N)
         for j in range(N):
             Diag[j] = 2/(2*j+1)
         return Diag 
 
-    def mass_matrix(self):
+    def mass_matrix(self): 
         return sparse.diags([self.L2_norm_sq(self.N+1)], [0], (self.N+1, self.N+1), format='csr')
 
     def eval(self, uh, xj):
@@ -152,7 +151,7 @@ class Chebyshev(FunctionSpace):
             Diag[j]=c*np.pi/2 
         return Diag
 
-    def mass_matrix(self):
+    def mass_matrix(self): 
         return sparse.diags([self.L2_norm_sq(self.N+1)], [0], (self.N+1, self.N+1), format='csr')
 
     def eval(self, uh, xj):
@@ -233,7 +232,7 @@ class Cosines(Trigonometric):
         else: 
             return lambda Xj: scale*np.sin(np.pi*j*Xj)
 
-    def L2_norm_sq(self, N):
+    def L2_norm_sq(self, N): 
         L2vector = np.ones(N)/2
         L2vector[0] = 1 
         return L2vector
@@ -272,22 +271,15 @@ class Composite(FunctionSpace):
     such that basis function i is
 
     .. math::
-
-        \psi_i = \sum_{j=0}^N S_{ij} Q_j
-
     where :math:`Q_i` can be either the i'th Chebyshev or Legendre polynomial
 
     For example, both Chebyshev and Legendre have Dirichlet basis functions
 
     .. math::
 
-        \psi_i = Q_i-Q_{i+2}
-
     Here the stencil matrix will be
 
     .. math::
-
-        s_{ij} = \delta_{ij} - \delta_{i+2, j}, \quad (i, j) \in (0, 1, \ldots, N) \times (0, 1, \ldots, N+2)
 
     Note that the stencil matrix is of shape :math:`(N+1) \times (N+3)`.
     """
@@ -336,7 +328,7 @@ class DirichletChebyshev(Composite, Chebyshev):
     def __init__(self, N, domain=(-1, 1), bc=(0, 0)):
         Chebyshev.__init__(self, N, domain=domain)
         self.B = Dirichlet(bc, domain, self.reference_domain)
-        self.S = sparse.diags((1, -1), (0, 2), shape=(N+1, N+3), format='csr')
+        self.S = sparse.diags((1, -1), (0, 2), shape=(N+1, N+3), format='csr')  
 
     def basis_function(self, j, sympy=False):
         if sympy:
@@ -353,7 +345,7 @@ class NeumannChebyshev(Composite, Chebyshev):
             alpha[i] = -(i/(i+2))**2 
         self.S = sparse.diags((1,alpha),(0,2), shape=(N+1, N+3), format='csr') 
 
-    def basis_function(self, j, sympy=False):
+    def basis_function(self, j, sympy=False): 
         if sympy: 
             return  sp.cos(j*sp.acos(x))- (j/(j+2))**2*sp.cos((j+2)*sp.acos(x))
         return Cheb.basis(j) - ((j/(j+2))**2)*Cheb.basis(j+2)
@@ -440,7 +432,10 @@ def L2_error(uh, ue, V, kind='norm'):
     d = V.domain
     uej = sp.lambdify(x, ue)
     def uv(xj): return (uej(xj)-V.eval(uh, xj))**2
-    return np.sqrt(quad(uv, float(d[0]), float(d[1]))[0])
+    if kind == 'norm':
+        return np.sqrt(quad(uv, float(d[0]), float(d[1]))[0])
+    elif kind == 'inf':
+        return max(abs(uj-uej))
 
 
 def test_project():
@@ -450,8 +445,7 @@ def test_project():
         V = space(16, domain=domain)
         u = project(ue, V)
         err = L2_error(u, ue, V)
-        print(
-            f'test_project: L2 error = {err:2.4e}, N = {V.N}, {V.__class__.__name__}')
+        print(f'test_project: L2 error = {err:2.4e}, N = {V.N}, {V.__class__.__name__}')
         assert err < 1e-6
 
 
@@ -473,8 +467,7 @@ def test_helmholtz():
         b = inner(f-(V.B.x.diff(x, 2)+V.B.x), v)
         u_tilde = np.linalg.solve(A, b)
         err = L2_error(u_tilde, ue, V)
-        print(
-            f'test_helmholtz: L2 error = {err:2.4e}, N = {N}, {V.__class__.__name__}')
+        print(f'test_helmholtz: L2 error = {err:2.4e}, N = {N}, {V.__class__.__name__}')
         assert err < 1e-3
 
 
@@ -492,8 +485,7 @@ def test_convection_diffusion():
         b = inner(f-((1/eps)*V.B.x.diff(x, 1)), v)
         u_tilde = np.linalg.solve(A, b)
         err = L2_error(u_tilde, ue, V)
-        print(
-            f'test_convection_diffusion: L2 error = {err:2.4e}, N = {N}, {V.__class__.__name__}')
+        print(f'test_convection_diffusion: L2 error = {err:2.4e}, N = {N}, {V.__class__.__name__}')
         assert err < 1e-3
 
 
